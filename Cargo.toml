@@ -1,0 +1,13 @@
+[package]
+name = "direct-asm"
+description = "A custom assembler for inline asm"
+version = "0.1.0"
+authors = ["Andreas Molzer <andreas.molzer@gmx.de>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+proc-macro2 = "1.0"
