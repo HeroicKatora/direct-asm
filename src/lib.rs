@@ -3,9 +3,8 @@ use std::io::Write;
 
 extern crate proc_macro;
 
-use proc_macro::{Delimiter, Group, Punct, Spacing, TokenStream, TokenTree};
+use proc_macro::{Delimiter, Literal, Group, Punct, Spacing, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use syn::spanned::Spanned;
 
 #[proc_macro_attribute]
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -20,7 +19,10 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let definition = {
         let mut items = TokenStream::new();
         for byte in &raw {
-            items.extend(Some(TokenTree::Punct(Punct::new(',', Spacing::Alone))));
+            if !items.is_empty() {
+                items.extend(Some(TokenTree::Punct(Punct::new(',', Spacing::Alone))));
+            }
+            items.extend(Some(TokenTree::Literal(Literal::u8_unsuffixed(*byte))));
         }
         let tree = TokenTree::Group(Group::new(Delimiter::Bracket, items));
         let stream = TokenStream::from(tree);
@@ -65,6 +67,7 @@ fn get_body(block: TokenStream) -> String {
         },
         _ => panic!("Expected function body"),
     };
+
     let parts = body.into_iter().map(|item| match item {
         TokenTree::Literal(literal) => {
             let stream = TokenTree::Literal(literal).into();
@@ -75,7 +78,8 @@ fn get_body(block: TokenStream) -> String {
         other => panic!("Unexpected body content: {:?}", other),
     });
 
-    parts.collect()
+    let specified: String = parts.collect();
+    format!("[BITS 64]\n{}", specified)
 }
 
 struct Head {
@@ -84,16 +88,23 @@ struct Head {
 }
 
 fn nasmify(input: &str) -> Vec<u8> {
+    use std::fs;
+    fs::write("target/indirection.in", input).unwrap();
+
     let mut nasm = process::Command::new("nasm")
         .stdin(process::Stdio::piped())
-        .args(&["-f", "bin", "-o", "/proc/self/fd/1", "/proc/self/fd/0"])
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped())
+        .args(&["-f", "bin", "-o", "/proc/self/fd/1", "target/indirection.in"])
         .spawn()
         .expect("Failed to spawn assembler");
+
     let stdin = nasm.stdin.as_mut().expect("Nasm must accept piped input");
     stdin.write_all(input.as_bytes()).expect("Failed to supply nasm with input");
+    stdin.flush().expect("Failed to flush");
 
     let output = nasm.wait_with_output().expect("Failed to wait for nasm");
-    if !output.status.success() {
+    if !output.status.success() || !output.stderr.is_empty() {
         panic!("Nasm failed: {}", String::from_utf8_lossy(&output.stderr));
     }
 

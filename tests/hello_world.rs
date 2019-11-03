@@ -4,11 +4,8 @@ extern "C" {
 
 #[direct_asm::assemble]
 unsafe fn call_this(rdi: *const u8, rsi: unsafe extern "C" fn(*const u8)) {
-    "
-    mov rdi, eax
-    call rsi
-    ret
-    "
+    "call rsi
+ret"
 }
 
 static HELLO: &[u8] = b"Hello, world!\0";
