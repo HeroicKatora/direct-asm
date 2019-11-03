@@ -3,26 +3,36 @@ use std::io::Write;
 
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use quote::quote;
+use proc_macro::{Delimiter, Group, Punct, Spacing, TokenStream, TokenTree};
+use quote::{quote, ToTokens};
+use syn::spanned::Spanned;
 
 #[proc_macro_attribute]
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let _ = args;
     let (head, body) = split_function(input);
-    let head = parse_head(head);
     let asm_input = get_body(body);
 
     let function_def = proc_macro2::TokenStream::from(head.function_def);
-    let symbol_name = head.name.to_string();
+    let symbol_name = head.name;
     let raw = nasmify(&asm_input);
     let len = raw.len();
-    let definition = format!("{:?}", raw.as_slice());
+    let definition = {
+        let mut items = TokenStream::new();
+        for byte in &raw {
+            items.extend(Some(TokenTree::Punct(Punct::new(',', Spacing::Alone))));
+        }
+        let tree = TokenTree::Group(Group::new(Delimiter::Bracket, items));
+        let stream = TokenStream::from(tree);
+        proc_macro2::TokenStream::from(stream)
+    };
 
     let mut binary_symbol = quote! {
-        #[link_section=".text"]
-        #[no_mangle]
-        static #symbol_name: [u8; #len] = #definition;
+        mod _no_matter {
+            #[link_section=".text"]
+            #[no_mangle]
+            static #symbol_name: [u8; #len] = #definition;
+        }
     };
 
     let function_symbol = quote! {
@@ -36,21 +46,41 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Split the function head and body.
-fn split_function(input: TokenStream) -> (TokenStream, TokenStream) {
-    unimplemented!()
+fn split_function(input: TokenStream) -> (Head, TokenStream) {
+    let mut fn_item = syn::parse::<syn::ItemFn>(input)
+        .expect("Must annotate a method definition");
+    fn_item.sig.unsafety = None;
+    let head = Head {
+        function_def: fn_item.sig.to_token_stream().into(),
+        name: fn_item.sig.ident,
+    };
+    (head, fn_item.block.to_token_stream().into())
 }
 
-fn get_body(body: TokenStream) -> String {
-    unimplemented!()
-}
+fn get_body(block: TokenStream) -> String {
+    let body;
+    match &block.into_iter().next() {
+        Some(TokenTree::Group(group)) if group.delimiter() == Delimiter::Brace => {
+            body = group.stream();
+        },
+        _ => panic!("Expected function body"),
+    };
+    let parts = body.into_iter().map(|item| match item {
+        TokenTree::Literal(literal) => {
+            let stream = TokenTree::Literal(literal).into();
+            let litstr = syn::parse::<syn::LitStr>(stream)
+                .expect("Body only contain string literals");
+            litstr.value()
+        },
+        other => panic!("Unexpected body content: {:?}", other),
+    });
 
-fn parse_head(head: TokenStream) -> Head {
-    unimplemented!()
+    parts.collect()
 }
 
 struct Head {
     function_def: TokenStream,
-    name: proc_macro::Ident,
+    name: syn::Ident,
 }
 
 fn nasmify(input: &str) -> Vec<u8> {
