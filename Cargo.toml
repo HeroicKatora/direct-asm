@@ -12,3 +12,6 @@ proc-macro = true
 quote = "1.0"
 proc-macro2 = "1.0"
 syn = { version = "1.0.7", features = ["full"] }
+
+[dev-dependencies]
+libc = "0.2"
