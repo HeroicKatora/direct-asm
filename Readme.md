@@ -4,7 +4,7 @@ A Rust proc-macro to include pre-assembled instructions as a function call.
 
 ## What
 
-```
+```rust
 use libc::{c_int, c_void, size_t, ssize_t, c_long};
 
 // Call write as a syscall on SysV x86-64 abi.
@@ -18,6 +18,12 @@ fn sys_write(fd: c_int, ptr: *const c_void, len: size_t, wcall: c_long)
     // Other arguments are already in correct register
     "syscall"; // Invoke actual system call placed in rax
     "ret" //Return actual result
+}
+
+fn sys_print(what: &str) -> libc::ssize_t {
+    unsafe {
+        sys_write(1, what.as_ptr() as *const libc::c_void, what.len(), SYS_write)
+    }
 }
 ```
 

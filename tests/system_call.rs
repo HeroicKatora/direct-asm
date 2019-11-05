@@ -11,7 +11,7 @@ fn sys_write(fd: c_int, ptr: *const c_void, len: size_t, wcall: c_long)
     "ret"; //Return actual result
 }
 
-fn sys_write_stdout(what: &str) -> libc::ssize_t {
+fn sys_print(what: &str) -> libc::ssize_t {
     unsafe {
         sys_write(1, what.as_ptr() as *const libc::c_void, what.len(), SYS_write)
     }
@@ -19,6 +19,7 @@ fn sys_write_stdout(what: &str) -> libc::ssize_t {
 
 #[test]
 fn syscall() {
-    let written = sys_write_stdout("Hello, world. Again\n\0");
+    // FIXME: assert we are on SysV-C-abi and UNIX
+    let written = sys_print("Hello, world. Again\n\0");
     println!("Written: {}", written);
 }
