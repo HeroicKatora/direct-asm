@@ -51,6 +51,10 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
 fn split_function(input: TokenStream) -> (Head, TokenStream) {
     let mut fn_item = syn::parse::<syn::ItemFn>(input)
         .expect("Must annotate a method definition");
+    // It should be declared as such because we put it into an `extern "C"` block ..
+    assert!(fn_item.sig.abi.is_some(), "Must specify function as having C abi");
+    // .. but remove it since the actual definition we output can not have it.
+    fn_item.sig.abi = None;
     fn_item.sig.unsafety = None;
     let head = Head {
         function_def: fn_item.sig.to_token_stream().into(),
@@ -68,13 +72,14 @@ fn get_body(block: TokenStream) -> String {
         _ => panic!("Expected function body"),
     };
 
-    let parts = body.into_iter().map(|item| match item {
+    let parts = body.into_iter().map(|item| match &item {
         TokenTree::Literal(literal) => {
-            let stream = TokenTree::Literal(literal).into();
+            let stream = TokenTree::Literal(literal.clone()).into();
             let litstr = syn::parse::<syn::LitStr>(stream)
                 .expect("Body only contain string literals");
             litstr.value()
         },
+        TokenTree::Punct(punc) if punc.as_char() == ';' => "\n".to_string(),
         other => panic!("Unexpected body content: {:?}", other),
     });
 

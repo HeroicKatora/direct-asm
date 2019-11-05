@@ -1,11 +1,14 @@
-use libc::SYS_write;
+use libc::{c_int, c_void, size_t, ssize_t, c_long, SYS_write};
 
 #[direct_asm::assemble]
-unsafe fn sys_write(fd: libc::c_int, ptr: *const libc::c_void, len: libc::size_t, wcall: libc::c_long) -> libc::ssize_t {
-    // Call styles differ: Move syscall from 4th SysV arg to rax
-    "mov rax, rcx
-    syscall
-    ret"
+unsafe extern "C" 
+fn sys_write(fd: c_int, ptr: *const c_void, len: size_t, wcall: c_long)
+    -> ssize_t 
+{
+    "mov rax, rcx"; // Move sys call number to rax as required
+    // Other arguments are already in correct register
+    "syscall"; // Invoke actual system call placed in rax
+    "ret"; //Return actual result
 }
 
 fn sys_write_stdout(what: &str) -> libc::ssize_t {

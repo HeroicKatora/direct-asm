@@ -2,6 +2,25 @@
 
 A Rust proc-macro to include pre-assembled instructions as a function call.
 
+## What
+
+```
+use libc::{c_int, c_void, size_t, ssize_t, c_long};
+
+// Call write as a syscall on SysV x86-64 abi.
+// WIP: The constant SYS_write needs to be provided by the caller for now.
+#[direct_asm::assemble]
+unsafe extern "C" 
+fn sys_write(fd: c_int, ptr: *const c_void, len: size_t, wcall: c_long)
+    -> ssize_t 
+{
+    "mov rax, rcx"; // Move sys call number to rax as required
+    // Other arguments are already in correct register
+    "syscall"; // Invoke actual system call placed in rax
+    "ret" //Return actual result
+}
+```
+
 ## Why
 
 To show an alternative to `inline-asm` from gcc, possibly with more control
