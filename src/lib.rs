@@ -9,12 +9,16 @@ use quote::{quote, ToTokens};
 #[proc_macro_attribute]
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let _ = args;
+    // FIXME: chose this as an option from `args`.
+    let assembler: Box<dyn Assembler> = Box::new(Nasm);
+
     let (head, body) = split_function(input);
     let asm_input = get_body(body);
 
     let function_def = proc_macro2::TokenStream::from(head.function_def);
     let symbol_name = head.name;
-    let raw = nasmify(&asm_input);
+
+    let raw = assembler.assemble(&asm_input);
     let len = raw.len();
     let definition = {
         let mut items = TokenStream::new();
@@ -92,6 +96,12 @@ struct Head {
     name: syn::Ident,
 }
 
+trait Assembler {
+    fn assemble(&self, input: &str) -> Vec<u8>;
+}
+
+struct Nasm;
+
 fn nasmify(input: &str) -> Vec<u8> {
     use std::fs;
     fs::write("target/indirection.in", input).unwrap();
@@ -114,4 +124,10 @@ fn nasmify(input: &str) -> Vec<u8> {
     }
 
     output.stdout
+}
+
+impl Assembler for Nasm {
+    fn assemble(&self, input: &str) -> Vec<u8> {
+        nasmify(input)
+    }
 }
