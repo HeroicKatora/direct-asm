@@ -3,6 +3,9 @@ use std::io::Write;
 
 extern crate proc_macro;
 
+mod att;
+mod x86;
+
 use proc_macro::{Delimiter, Literal, Group, Punct, Spacing, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
 
@@ -10,7 +13,7 @@ use quote::{quote, ToTokens};
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let _ = args;
     // FIXME: chose this as an option from `args`.
-    let assembler: Box<dyn Assembler> = Box::new(Nasm);
+    let mut assembler: Box<dyn Assembler> = Box::new(Nasm);
 
     let (head, body) = split_function(input);
     let asm_input = get_body(body);
@@ -97,7 +100,7 @@ struct Head {
 }
 
 trait Assembler {
-    fn assemble(&self, input: &str) -> Vec<u8>;
+    fn assemble(&mut self, input: &str) -> Vec<u8>;
 }
 
 struct Nasm;
@@ -127,7 +130,7 @@ fn nasmify(input: &str) -> Vec<u8> {
 }
 
 impl Assembler for Nasm {
-    fn assemble(&self, input: &str) -> Vec<u8> {
+    fn assemble(&mut self, input: &str) -> Vec<u8> {
         nasmify(input)
     }
 }
