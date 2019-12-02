@@ -13,6 +13,7 @@
 //! ```
 use core::str;
 
+#[derive(Debug)]
 pub struct Line {
     pub label: Option<String>,
     pub kind: LineKind,
@@ -32,23 +33,27 @@ pub enum Error {
 }
 
 /// A single statement, an input line.
+#[derive(Debug)]
 pub enum LineKind {
     Directive(Directive),
     Statement(Statement),
     NoCode,
 }
 
+#[derive(Debug)]
 pub struct Directive {
     pub name: String,
     pub arguments: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct Statement {
     /// Mnemonic of the op code and prefixes.
     pub mnemonic: Vec<String>,
     pub arguments: Vec<Argument>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Argument {
     Register(String),
     Memory(Memory),
@@ -56,6 +61,7 @@ pub enum Argument {
 }
 
 /// An access into memory.
+#[derive(Debug, PartialEq, Eq)]
 pub struct Memory {
     pub segment: Option<String>,
     pub displacement: Option<Value>,
@@ -65,6 +71,7 @@ pub struct Memory {
 }
 
 /// TODO: support external expressions.
+#[derive(Debug, PartialEq, Eq)]
 pub struct Value {
     /// Value parsed as `i64`, can be converted to any other bitwidth.
     pub value: i64,
@@ -86,8 +93,9 @@ impl str::FromStr for Line {
                     self.name_parts.push(String::new());
                     self.name_parts.last_mut().unwrap()
                 } else {
-                    self.arguments.last_mut().unwrap().push_str(" ");
-                    self.arguments.last_mut().unwrap()
+                    let arg = self.arguments.last_mut().unwrap();
+                    arg.push_str(" ");
+                    arg
                 }
             }
 
@@ -182,6 +190,20 @@ impl str::FromStr for Line {
 }
 
 impl LineKind {
+    pub fn as_statement(&self) -> Option<&Statement> {
+        match self {
+            LineKind::Statement(stmt) => Some(stmt),
+            _ => None,
+        }
+    }
+
+    pub fn as_directive(&self) -> Option<&Directive> {
+        match self {
+            LineKind::Directive(directive) => Some(directive),
+            _ => None,
+        }
+    }
+
     fn from_solo_name(st: String) -> Self {
         if st.starts_with('.') {
             LineKind::Directive(Directive {
@@ -203,7 +225,9 @@ impl LineKind {
 
         let mut base = Self::from_solo_name(args[0].clone());
         args.drain(..1).for_each(drop);
-        base.add_name_parts(args)?;
+        if !args.is_empty() {
+            base.add_name_parts(args)?;
+        }
         Ok(base)
     }
 
@@ -254,6 +278,7 @@ fn separator(ch: char) -> bool {
     || ch == ' '
 }
 
+#[derive(Debug)]
 enum Separator {
     Argument,
     Comment,
@@ -308,9 +333,35 @@ mod tests {
     #[test]
     fn parses() {
         let simple: Line = "syscall".parse().unwrap();
+        let statement = simple.kind.as_statement().unwrap();
+        assert_eq!(statement.mnemonic, vec!["syscall".to_string()]);
+        assert_eq!(&statement.arguments[..], &[][..]);
+
         let mov: Line = "mov %eax, %ebx".parse().unwrap();
+        let statement = mov.kind.as_statement().unwrap();
+        assert_eq!(statement.mnemonic, vec!["mov".to_string()]);
+        assert_eq!(statement.arguments, vec![Argument::Register("eax".into()), Argument::Register("ebx".into())]);
+
         let locked: Line = "lock mov %eax, %ebx".parse().unwrap();
+        let statement = locked.kind.as_statement().unwrap();
+        assert_eq!(statement.mnemonic, vec!["lock".to_string(), "mov".to_string()]);
+        assert_eq!(statement.arguments, vec![Argument::Register("eax".into()), Argument::Register("ebx".into())]);
+
         let label: Line = "1: mov %eax, %ebx".parse().unwrap();
-        let comment: Line = "mov %eax, %ebx ; Oh my".parse().unwrap();
+        let statement = label.kind.as_statement().unwrap();
+        assert_eq!(label.label, Some("1".into()));
+        assert_eq!(statement.mnemonic, vec!["mov".to_string()]);
+        assert_eq!(statement.arguments, vec![Argument::Register("eax".into()), Argument::Register("ebx".into())]);
+
+        let comment: Line = "mov %eax, %ebx ;Oh my".parse().unwrap();
+        let statement = comment.kind.as_statement().unwrap();
+        assert_eq!(comment.comment, Some("Oh my".into()));
+        assert_eq!(statement.mnemonic, vec!["mov".to_string()]);
+        assert_eq!(statement.arguments, vec![Argument::Register("eax".into()), Argument::Register("ebx".into())]);
+
+        let directive: Line = ".word 1, 2".parse().unwrap();
+        let directive = directive.kind.as_directive().unwrap();
+        assert_eq!(directive.name, "word".to_string());
+        assert_eq!(directive.arguments, vec!["1".to_string(), " 2".to_string()]);
     }
 }
