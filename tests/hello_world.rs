@@ -1,6 +1,6 @@
 #[direct_asm::assemble]
 unsafe extern "C" fn call_this(rdi: *const u8, rsi: unsafe extern "C" fn(*const i8)) {
-    "call rsi";
+    "call %rsi";
     "ret"
 }
 

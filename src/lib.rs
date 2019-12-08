@@ -13,7 +13,7 @@ use quote::{quote, ToTokens};
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let _ = args;
     // FIXME: chose this as an option from `args`.
-    let mut assembler: Box<dyn Assembler> = Box::new(Nasm);
+    let mut assembler: Box<dyn Assembler> = Box::new(x86::DynasmX86::new());
 
     let (head, body) = split_function(input);
     let asm_input = get_body(body);
@@ -90,8 +90,7 @@ fn get_body(block: TokenStream) -> String {
         other => panic!("Unexpected body content: {:?}", other),
     });
 
-    let specified: String = parts.collect();
-    format!("[BITS 64]\n{}", specified)
+    parts.collect()
 }
 
 struct Head {
@@ -106,8 +105,8 @@ trait Assembler {
 struct Nasm;
 
 fn nasmify(input: &str) -> Vec<u8> {
-    use std::fs;
-    fs::write("target/indirection.in", input).unwrap();
+    let input = format!("[BITS 64]\n{}", input);
+    std::fs::write("target/indirection.in", &input).unwrap();
 
     let mut nasm = process::Command::new("nasm")
         .stdin(process::Stdio::piped())

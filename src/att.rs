@@ -322,7 +322,7 @@ impl str::FromStr for Memory {
     type Err = Error;
 
     fn from_str(st: &str) -> Result<Self, Error> {
-        unimplemented!()
+        unimplemented!("Memory argument parsing")
     }
 }
 

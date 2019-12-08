@@ -5,7 +5,7 @@ unsafe extern "C"
 fn sys_write(fd: c_int, ptr: *const c_void, len: size_t, wcall: c_long)
     -> ssize_t 
 {
-    "mov rax, rcx"; // Move sys call number to rax as required
+    "mov %rax, %rcx"; // Move sys call number to rax as required
     // Other arguments are already in correct register
     "syscall"; // Invoke actual system call placed in rax
     "ret"; //Return actual result
