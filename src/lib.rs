@@ -11,9 +11,8 @@ use quote::{quote, ToTokens};
 
 #[proc_macro_attribute]
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
-    let _ = args;
-    // FIXME: chose this as an option from `args`.
-    let mut assembler: Box<dyn Assembler> = Box::new(x86::DynasmX86::new());
+    let attr = syn::parse_macro_input!(args as syn::AttributeArgs);
+    let mut assembler: Box<dyn Assembler> = choose_backed(&attr);
 
     let (head, body) = split_function(input);
     let asm_input = get_body(body);
@@ -52,6 +51,38 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
 
     binary_symbol.extend(function_symbol);
     binary_symbol.into()
+}
+
+fn choose_backed(attr: &[syn::NestedMeta]) -> Box<dyn Assembler> {
+    enum Backend {
+        Nasm,
+        Dynasm,
+    }
+
+    let backend = match &attr {
+        [syn::NestedMeta::Meta(syn::Meta::NameValue(syn::MetaNameValue { path , lit, .. }))] => {
+            if path.is_ident("backend") {
+                if let syn::Lit::Str(st) = lit {
+                    match st.value().as_str() {
+                        "nasm" => Backend::Nasm,
+                        "dynasm" => Backend::Dynasm,
+                        _ => panic!("Unknown backend"),
+                    }
+                } else {
+                    panic!("Expected string value identifying backend");
+                }
+            } else {
+                panic!("Unexpected keyword")
+            }
+        },
+        [] => Backend::Dynasm,
+        _ => panic!("Backend is unknown"),
+    };
+
+    match backend {
+        Backend::Nasm => Box::new(Nasm),
+        Backend::Dynasm => Box::new(x86::DynasmX86::new()),
+    }
 }
 
 /// Split the function head and body.
