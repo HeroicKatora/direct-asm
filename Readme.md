@@ -50,4 +50,6 @@ Indeed. Don't use in prod.
 
 ## License
 
-[Unlicense](https://unlicense.org/)
+The base software: [Unlicense](https://unlicense.org/)
+
+The modified `dynasm` backend: Mozilla Public License Version 2.0
