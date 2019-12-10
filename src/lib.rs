@@ -8,6 +8,7 @@ mod x86;
 
 use proc_macro::{Delimiter, Literal, Group, Punct, Spacing, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
+use rand::{thread_rng, Rng};
 
 #[proc_macro_attribute]
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -18,7 +19,6 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let asm_input = get_body(body);
 
     let function_def = proc_macro2::TokenStream::from(head.function_def);
-    let symbol_name = head.name;
 
     let raw = assembler.assemble(&asm_input);
     let len = raw.len();
@@ -35,16 +35,19 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
         proc_macro2::TokenStream::from(stream)
     };
 
+    let unique_name = choose_link_name();
+    let unique_ident = syn::Ident::new(&unique_name, proc_macro2::Span::call_site());
     let mut binary_symbol = quote! {
         mod _no_matter {
             #[link_section=".text"]
             #[no_mangle]
-            static #symbol_name: [u8; #len] = #definition;
+            static #unique_ident: [u8; #len] = #definition;
         }
     };
 
     let function_symbol = quote! {
         extern "C" {
+            #[link_name=#unique_name]
             #function_def;
         }
     };
@@ -96,7 +99,6 @@ fn split_function(input: TokenStream) -> (Head, TokenStream) {
     fn_item.sig.unsafety = None;
     let head = Head {
         function_def: fn_item.sig.to_token_stream().into(),
-        name: fn_item.sig.ident,
     };
     (head, fn_item.block.to_token_stream().into())
 }
@@ -124,9 +126,27 @@ fn get_body(block: TokenStream) -> String {
     parts.collect()
 }
 
+/// Generate a random (196-bit) unique identifier for the symbol link in the proc macro.
+///
+/// To execute the trick of re-interpreting a byte stream as a function we must choose a common
+/// link name between the symbol and the later function definition that imports that symbol. This
+/// should not collide with other defined symbols, as that might silently be unsafe.
+fn choose_link_name() -> String {
+    const CHOICES: &[u8; 64] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ZZ";
+    let mut randoms = [0u8; 32];
+    thread_rng().fill(&mut randoms);
+
+    let random = randoms
+        .iter()
+        .map(|idx| usize::from(idx & 63))
+        .map(|idx| std::char::from_u32(CHOICES[idx].into()).unwrap())
+        .collect::<String>();
+
+    format!("_direct_asm_{}", random)
+}
+
 struct Head {
     function_def: TokenStream,
-    name: syn::Ident,
 }
 
 trait Assembler {
