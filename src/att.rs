@@ -55,8 +55,11 @@ pub struct Statement {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Argument {
+    /// A register argument.
     Register(String),
+    /// A memory reference (read or write or other is determined later).
     Memory(Memory),
+    /// A value constant in code.
     Immediate(Value),
 }
 
@@ -70,11 +73,41 @@ pub struct Memory {
     pub scale: Option<Value>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Value {
+    Const(Constant),
+    Expr(Expression),
+}
+
 /// TODO: support external expressions.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Value {
+pub struct Constant {
     /// Value parsed as `i64`, can be converted to any other bitwidth.
     pub value: i64,
+}
+
+/// TODO: valid everywhere a value occurs?
+#[derive(Debug, PartialEq, Eq)]
+pub struct Expression {
+    type_: Type,
+    content: String,
+}
+
+/// Indicated integral bit type ascription of an expression.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Type {
+    I8,
+    U8,
+    I16,
+    U16,
+    I32,
+    U32,
+    I64,
+    U64,
+    I128,
+    U128,
+    Usize,
+    Isize,
 }
 
 impl str::FromStr for Line {
@@ -312,8 +345,8 @@ impl str::FromStr for Argument {
         } else if st.starts_with('%') {
             Ok(Argument::Register(st[1..].to_string()))
         } else {
-            let value = st.parse().ok().ok_or_else(|| Error::InvalidImmediateValue)?;
-            Ok(Argument::Immediate(Value { value }))
+            let constant = st.parse()?;
+            Ok(Argument::Immediate(Value::Const(constant)))
         }
     }
 }
@@ -323,6 +356,15 @@ impl str::FromStr for Memory {
 
     fn from_str(st: &str) -> Result<Self, Error> {
         unimplemented!("Memory argument parsing")
+    }
+}
+
+impl str::FromStr for Constant {
+    type Err = Error;
+    fn from_str(st: &str) -> Result<Self, Error> {
+        let value = st.parse()
+            .map_err(|_| Error::InvalidImmediateValue)?;
+        Ok(Constant { value })
     }
 }
 
