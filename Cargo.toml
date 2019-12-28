@@ -9,9 +9,15 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
+dynasm-lib = { path = "dynasm-rs/lib/", optional = true }
 quote = "1.0"
 proc-macro2 = "1.0"
 syn = { version = "1.0.7", features = ["full"] }
+rand = "0.7"
 
 [dev-dependencies]
 libc = "0.2"
+
+[features]
+default = ["dynasm"]
+dynasm = ["dynasm-lib"]

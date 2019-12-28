@@ -3,18 +3,24 @@ use std::io::Write;
 
 extern crate proc_macro;
 
+mod att;
+mod x86;
+
 use proc_macro::{Delimiter, Literal, Group, Punct, Spacing, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
+use rand::{thread_rng, Rng};
 
 #[proc_macro_attribute]
 pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
-    let _ = args;
+    let attr = syn::parse_macro_input!(args as syn::AttributeArgs);
+    let mut assembler: Box<dyn Assembler> = choose_backed(&attr);
+
     let (head, body) = split_function(input);
     let asm_input = get_body(body);
 
     let function_def = proc_macro2::TokenStream::from(head.function_def);
-    let symbol_name = head.name;
-    let raw = nasmify(&asm_input);
+
+    let raw = assembler.assemble(&asm_input);
     let len = raw.len();
     let definition = {
         let mut items = TokenStream::new();
@@ -29,22 +35,57 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
         proc_macro2::TokenStream::from(stream)
     };
 
+    let unique_name = choose_link_name();
+    let unique_ident = syn::Ident::new(&unique_name, proc_macro2::Span::call_site());
     let mut binary_symbol = quote! {
         mod _no_matter {
             #[link_section=".text"]
             #[no_mangle]
-            static #symbol_name: [u8; #len] = #definition;
+            static #unique_ident: [u8; #len] = #definition;
         }
     };
 
     let function_symbol = quote! {
         extern "C" {
+            #[link_name=#unique_name]
             #function_def;
         }
     };
 
     binary_symbol.extend(function_symbol);
     binary_symbol.into()
+}
+
+fn choose_backed(attr: &[syn::NestedMeta]) -> Box<dyn Assembler> {
+    enum Backend {
+        Nasm,
+        Dynasm,
+    }
+
+    let backend = match &attr {
+        [syn::NestedMeta::Meta(syn::Meta::NameValue(syn::MetaNameValue { path , lit, .. }))] => {
+            if path.is_ident("backend") {
+                if let syn::Lit::Str(st) = lit {
+                    match st.value().as_str() {
+                        "nasm" => Backend::Nasm,
+                        "dynasm" => Backend::Dynasm,
+                        _ => panic!("Unknown backend"),
+                    }
+                } else {
+                    panic!("Expected string value identifying backend");
+                }
+            } else {
+                panic!("Unexpected keyword")
+            }
+        },
+        [] => Backend::Dynasm,
+        _ => panic!("Backend is unknown"),
+    };
+
+    match backend {
+        Backend::Nasm => Box::new(Nasm),
+        Backend::Dynasm => Box::new(x86::DynasmX86::new()),
+    }
 }
 
 /// Split the function head and body.
@@ -58,7 +99,6 @@ fn split_function(input: TokenStream) -> (Head, TokenStream) {
     fn_item.sig.unsafety = None;
     let head = Head {
         function_def: fn_item.sig.to_token_stream().into(),
-        name: fn_item.sig.ident,
     };
     (head, fn_item.block.to_token_stream().into())
 }
@@ -83,18 +123,41 @@ fn get_body(block: TokenStream) -> String {
         other => panic!("Unexpected body content: {:?}", other),
     });
 
-    let specified: String = parts.collect();
-    format!("[BITS 64]\n{}", specified)
+    parts.collect()
+}
+
+/// Generate a random (196-bit) unique identifier for the symbol link in the proc macro.
+///
+/// To execute the trick of re-interpreting a byte stream as a function we must choose a common
+/// link name between the symbol and the later function definition that imports that symbol. This
+/// should not collide with other defined symbols, as that might silently be unsafe.
+fn choose_link_name() -> String {
+    const CHOICES: &[u8; 64] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ZZ";
+    let mut randoms = [0u8; 32];
+    thread_rng().fill(&mut randoms);
+
+    let random = randoms
+        .iter()
+        .map(|idx| usize::from(idx & 63))
+        .map(|idx| std::char::from_u32(CHOICES[idx].into()).unwrap())
+        .collect::<String>();
+
+    format!("_direct_asm_{}", random)
 }
 
 struct Head {
     function_def: TokenStream,
-    name: syn::Ident,
 }
 
+trait Assembler {
+    fn assemble(&mut self, input: &str) -> Vec<u8>;
+}
+
+struct Nasm;
+
 fn nasmify(input: &str) -> Vec<u8> {
-    use std::fs;
-    fs::write("target/indirection.in", input).unwrap();
+    let input = format!("[BITS 64]\n{}", input);
+    std::fs::write("target/indirection.in", &input).unwrap();
 
     let mut nasm = process::Command::new("nasm")
         .stdin(process::Stdio::piped())
@@ -114,4 +177,10 @@ fn nasmify(input: &str) -> Vec<u8> {
     }
 
     output.stdout
+}
+
+impl Assembler for Nasm {
+    fn assemble(&mut self, input: &str) -> Vec<u8> {
+        nasmify(input)
+    }
 }
