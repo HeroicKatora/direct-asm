@@ -13,3 +13,5 @@ objcopy -j combined -O binary payload payload.bin
 
 ENTRY=$(nm -f posix payload | grep '^main ' | awk '{print $3}')
 nasm -f bin -o direct-asm-tiny -D entry=0x$ENTRY elf.s
+
+echo "Final size:" $(wc -c direct-asm-tiny)

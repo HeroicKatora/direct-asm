@@ -48,6 +48,10 @@ definition and hence calls the code as intended.
 
 Indeed. Don't use in prod.
 
+## Demo?
+
+Within the `minimal-rust` folder we build a 186-byte binary on stable Rust.
+
 ## License
 
 The base software: [Unlicense](https://unlicense.org/)

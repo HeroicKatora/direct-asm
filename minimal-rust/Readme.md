@@ -1,4 +1,8 @@
-Demonstrate the usefulness of direct-asm to build minimal binaries on stable Rust.
+Demonstrate the usefulness of direct-asm to build minimal binaries on stable
+Rust. This only works on `x86_64-linux` since it is obviously dependent on
+loader and the system call interface. However, it should be easy to swap the
+actual function definitions depending on some `cfg` macros that check targets
+and support other OS's that can execute ELF. Pull requests are welcome.
 
 The file `src/lib.rs` is published under the terms of [Unlicense](./UNLICENSE).
 
