@@ -89,8 +89,8 @@ pub struct Constant {
 /// TODO: valid everywhere a value occurs?
 #[derive(Debug, PartialEq, Eq)]
 pub struct Expression {
-    type_: Type,
-    content: String,
+    pub type_: Type,
+    pub content: String,
 }
 
 /// Indicated integral bit type ascription of an expression.
@@ -106,8 +106,14 @@ pub enum Type {
     U64,
     I128,
     U128,
-    Usize,
     Isize,
+    Usize,
+    SShort,
+    UShort,
+    SInt,
+    UInt,
+    SLong,
+    ULong,
 }
 
 impl str::FromStr for Line {
