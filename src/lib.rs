@@ -58,6 +58,7 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
 
 fn choose_backed(attr: &[syn::NestedMeta]) -> Box<dyn Assembler> {
     enum Backend {
+        GnuAs,
         Nasm,
         Dynasm,
     }
@@ -69,7 +70,8 @@ fn choose_backed(attr: &[syn::NestedMeta]) -> Box<dyn Assembler> {
                     match st.value().as_str() {
                         "nasm" => Backend::Nasm,
                         "dynasm" => Backend::Dynasm,
-                        _ => panic!("Unknown backend"),
+                        "gnu-as" | "gnuas" | "gas" | "as" => Backend::GnuAs,
+                        _ => panic!("Unknown backend (nasm, dynasm, gnuas, gnu-as, gas, as)"),
                     }
                 } else {
                     panic!("Expected string value identifying backend");
@@ -83,6 +85,7 @@ fn choose_backed(attr: &[syn::NestedMeta]) -> Box<dyn Assembler> {
     };
 
     match backend {
+        Backend::GnuAs => Box::new(GnuAs {}),
         Backend::Nasm => Box::new(Nasm),
         Backend::Dynasm => Box::new(x86::DynasmX86::new()),
     }
@@ -155,6 +158,9 @@ trait Assembler {
 
 struct Nasm;
 
+struct GnuAs {
+}
+
 fn nasmify(input: &str) -> Vec<u8> {
     let input = format!("[BITS 64]\n{}", input);
     std::fs::write("target/indirection.in", &input).unwrap();
@@ -182,5 +188,59 @@ fn nasmify(input: &str) -> Vec<u8> {
 impl Assembler for Nasm {
     fn assemble(&mut self, input: &str) -> Vec<u8> {
         nasmify(input)
+    }
+}
+
+impl Assembler for GnuAs {
+    fn assemble(&mut self, original_input: &str) -> Vec<u8> {
+        let newlined;
+        let input: &str;
+
+        if original_input.chars().rev().next() != Some('\n') {
+            newlined = format!("{}\n", original_input);
+            input = &newlined;
+        } else {
+            input = original_input;
+        }
+
+        const ASSEMBLED_FILE: &str = "target/gnu-as.out";
+        // Some arguments for reference:
+        // target selection: -march=<name>
+        // --32, --64, --x32 for isa qualification
+        // -n do not optimize alignment
+        // -mmnemonic/-msyntax=[att|intel]
+        let mut as_ = process::Command::new("as")
+            // We act as if this was safe, the least we can do is check thoroughly.
+            .arg("-msse-check=error")
+            .arg("-moperand-check=error")
+            .arg("-mmnemonic=intel")
+            .arg("-msyntax=intel")
+            .args(&["-o", ASSEMBLED_FILE])
+            .stdin(process::Stdio::piped())
+            .stdout(process::Stdio::piped())
+            .stderr(process::Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn assembler");
+
+        let stdin = as_.stdin.as_mut().expect("As must accept piped input");
+        stdin.write_all(input.as_bytes()).expect("Failed to supply as with input");
+        stdin.flush().expect("Failed to flush");
+
+        let output = as_.wait_with_output().expect("Failed to wait for as");
+        if !output.status.success() || !output.stderr.is_empty() {
+            panic!("Gnu As failed: {}", String::from_utf8_lossy(&output.stderr));
+        }
+
+        // gnu as will always output ELF. We only need the binary from it. Better hope you didn't
+        // use any tables or so, as those will be dropped in the process.
+        // TODO: fail loudly.
+        let status = process::Command::new("objcopy")
+            .args(&["-O", "binary"])
+            .arg(ASSEMBLED_FILE)
+            .status()
+            .expect("Failed to spawn `objcopy`");
+        assert!(status.success(), "`objcopy` failed");
+
+        std::fs::read(ASSEMBLED_FILE).expect("No output produced")
     }
 }
