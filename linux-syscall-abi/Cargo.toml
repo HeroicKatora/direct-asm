@@ -1,0 +1,8 @@
+[package]
+name = "linux-syscall-abi"
+version = "0.0.1"
+authors = ["Andreas Molzer <andreas.molzer@gmx.de>"]
+edition = "2018"
+
+[dependencies]
+direct-asm = { path = "../" }
