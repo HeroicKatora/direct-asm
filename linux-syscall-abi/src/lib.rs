@@ -33,22 +33,12 @@
 //! x86-64        rdi   rsi   rdx   rcx   r8    r9    rax   rdx   rbx,rsp,rbp
 //! ```
 
+#[cfg(target_arch = "x86_64")]
+#[path = "x86_64.rs"]
+mod impl_;
+
 #[cfg(target_os = "linux")]
-pub unsafe fn syscall0(NR: usize) -> usize {
-    #[cfg(target_arch = "x86_64")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call0_inner(NR: usize) -> usize {
-        // syscall clobbers %rcx and %r11
-        // See https://stackoverflow.com/questions/47983371/why-do-x86-64-linux-system-calls-modify-rcx-and-what-does-the-value-mean/47997378#47997378
-        "push %rcx";
-        "push %r11";
-        "syscall";
-        "pop %r11";
-        "pop %rcx";
-        "ret";
-    }
-
-
+pub unsafe fn syscall0(nr: usize) -> usize {
     /* These are not yet supported by the assembler. Compiling them would yield invalid
      * instructions on their platforms.
     #[cfg(target_arch = "x86")]
@@ -71,25 +61,11 @@ pub unsafe fn syscall0(NR: usize) -> usize {
     */
 
     // Translate to the inner abi
-    unsafe { call0_inner(NR) }
+    unsafe { impl_::call0(nr) }
 }
 
 #[cfg(target_os = "linux")]
-pub unsafe fn syscall1(NR: usize, a: usize) -> usize {
-    #[cfg(target_arch = "x86_64")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize, a: usize) -> usize {
-        // syscall clobbers %rcx and %r11
-        // See https://stackoverflow.com/questions/47983371/why-do-x86-64-linux-system-calls-modify-rcx-and-what-does-the-value-mean/47997378#47997378
-        "push %rcx";
-        "push %r11";
-        "syscall";
-        "pop %r11";
-        "pop %rcx";
-        "ret";
-    }
-
-
+pub unsafe fn syscall1(nr: usize, a: usize) -> usize {
     /* These are not yet supported by the assembler. Compiling them would yield invalid
      * instructions on their platforms.
     #[cfg(target_arch = "x86")]
@@ -112,5 +88,5 @@ pub unsafe fn syscall1(NR: usize, a: usize) -> usize {
     */
 
     // Translate to the inner abi
-    unsafe { call1_inner(NR, a) }
+    unsafe { impl_::call1(nr, a) }
 }

@@ -21,3 +21,9 @@ libc = "0.2"
 [features]
 default = ["dynasm"]
 dynasm = ["dynasm-lib"]
+
+[workspace]
+members = [
+  ".",
+  "linux-syscall-abi",
+]

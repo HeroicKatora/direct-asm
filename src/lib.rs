@@ -18,7 +18,6 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let (head, body) = split_function(input);
     let asm_input = get_body(body);
 
-    let function_def = proc_macro2::TokenStream::from(head.function_def);
 
     let raw = assembler.assemble(&asm_input);
     let len = raw.len();
@@ -38,17 +37,23 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let unique_name = choose_link_name();
     let unique_ident = syn::Ident::new(&unique_name, proc_macro2::Span::call_site());
     let mut binary_symbol = quote! {
-        mod _no_matter {
+        mod #unique_ident {
             #[link_section=".text"]
             #[no_mangle]
             static #unique_ident: [u8; #len] = #definition;
         }
     };
 
+    let function_def = syn::ForeignItem::Fn(syn::ForeignItemFn {
+        attrs: vec![syn::parse_quote!(#[link_name=#unique_name])],
+        vis: head.visibility,
+        sig: head.function_def,
+        semi_token: syn::token::Semi::default(),
+    });
+
     let function_symbol = quote! {
         extern "C" {
-            #[link_name=#unique_name]
-            #function_def;
+            #function_def
         }
     };
 
@@ -101,7 +106,8 @@ fn split_function(input: TokenStream) -> (Head, TokenStream) {
     fn_item.sig.abi = None;
     fn_item.sig.unsafety = None;
     let head = Head {
-        function_def: fn_item.sig.to_token_stream().into(),
+        function_def: fn_item.sig,
+        visibility: fn_item.vis,
     };
     (head, fn_item.block.to_token_stream().into())
 }
@@ -149,7 +155,8 @@ fn choose_link_name() -> String {
 }
 
 struct Head {
-    function_def: TokenStream,
+    function_def: syn::Signature,
+    visibility: syn::Visibility,
 }
 
 trait Assembler {
