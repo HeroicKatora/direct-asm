@@ -1,15 +1,28 @@
 [package]
 name = "direct-asm"
-description = "A custom assembler for inline asm"
-version = "0.0.1"
+version = "0.0.1-alpha"
 authors = ["Andreas Molzer <andreas.molzer@gmx.de>"]
+
+description = "A custom assembler for inline asm"
+documentation = "https://github.com/HeroicKatora/direct-asm"
+repository = "https://github.com/HeroicKatora/direct-asm"
+
+readme = "Readme.md"
+keywords = ["dynasm", "assembler", "assemble"]
+license = "Unlicense"
 edition = "2018"
+
+include = [
+  "Cargo.toml",
+  "Readme.md",
+  "src"
+]
 
 [lib]
 proc-macro = true
 
 [dependencies]
-dynasm-lib = { path = "dynasm-rs/lib/", optional = true }
+dynasm-lib = { path = "dynasm-rs/lib/", optional = true, version = "0.1.0-alpha" }
 quote = "1.0"
 proc-macro2 = "1.0"
 syn = { version = "1.0.7", features = ["full"] }
