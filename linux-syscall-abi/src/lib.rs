@@ -32,61 +32,69 @@
 //! Arch/ABI      a0    a1    a2    a3    a4    a5    ret1  ret2  caller
 //! x86-64        rdi   rsi   rdx   rcx   r8    r9    rax   rdx   rbx,rsp,rbp
 //! ```
+// Prepare for the future, we might want to justify our inner translation.
+#![allow(unused_unsafe)]
+#![no_std]
 
 #[cfg(target_arch = "x86_64")]
 #[path = "x86_64.rs"]
 mod impl_;
 
+/* These are not yet supported by the assembler. Compiling them would yield invalid
+ * instructions on their platforms.
+#[cfg(target_arch = "x86")]
+#[path = "x86.rs"]
+mod impl_;
+
+#[cfg(target_arch = "aarch64")]
+#[path = "aarch64.rs"]
+mod impl_;
+*/
+
+
+/// A helper to distinguish the syscall number from other parameters.
+///
+/// We can't really help you with others but this one is somewhat important. Furthermore it's a
+/// great help internally where it ensure we've placed the parameter at the right location. The
+/// type is a transparent wrapper.
+///
+/// This further enables a namespaced access to constants and call numbers that are conditionally
+/// available per system ABI.
+#[repr(transparent)]
+pub struct SysNr(pub isize);
+
 #[cfg(target_os = "linux")]
-pub unsafe fn syscall0(nr: usize) -> usize {
-    /* These are not yet supported by the assembler. Compiling them would yield invalid
-     * instructions on their platforms.
-    #[cfg(target_arch = "x86")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize) -> usize {
-        "ret"
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize) -> usize {
-        "ret"
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize) -> usize {
-        "ret"
-    }
-    */
-
+pub unsafe fn syscall0(nr: SysNr) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call0(nr) }
 }
 
 #[cfg(target_os = "linux")]
-pub unsafe fn syscall1(nr: usize, a: usize) -> usize {
-    /* These are not yet supported by the assembler. Compiling them would yield invalid
-     * instructions on their platforms.
-    #[cfg(target_arch = "x86")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize) -> usize {
-        "ret"
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize) -> usize {
-        "ret"
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    #[direct_asm::assemble]
-    unsafe extern "C" fn call1_inner(NR: usize) -> usize {
-        "ret"
-    }
-    */
-
+pub unsafe fn syscall1(nr: SysNr, a: isize) -> isize {
     // Translate to the inner abi
-    unsafe { impl_::call1(nr, a) }
+    unsafe { impl_::call1(a, nr) }
+}
+
+#[cfg(target_os = "linux")]
+pub unsafe fn syscall2(nr: SysNr, a: isize, b: isize) -> isize {
+    // Translate to the inner abi
+    unsafe { impl_::call2(a, b, nr) }
+}
+
+#[cfg(target_os = "linux")]
+pub unsafe fn syscall3(nr: SysNr, a: isize, b: isize, c: isize) -> isize {
+    // Translate to the inner abi
+    unsafe { impl_::call3(a, b, c, nr) }
+}
+
+#[cfg(target_os = "linux")]
+pub unsafe fn syscall4(nr: SysNr, a: isize, b: isize, c: isize, d: isize) -> isize {
+    // Translate to the inner abi
+    unsafe { impl_::call4(a, b, c, d, nr) }
+}
+
+#[cfg(target_os = "linux")]
+pub unsafe fn syscall5(nr: SysNr, a: isize, b: isize, c: isize, d: isize, e: isize) -> isize {
+    // Translate to the inner abi
+    unsafe { impl_::call5(a, b, c, d, e, nr) }
 }
