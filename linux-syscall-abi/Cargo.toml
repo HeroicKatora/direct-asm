@@ -2,7 +2,15 @@
 name = "linux-syscall-abi"
 version = "0.0.1"
 authors = ["Andreas Molzer <andreas.molzer@gmx.de>"]
+
+description = "Defines syscallN methods for making raw Linux"
+documentation = "https://docs.rs/linux-syscall-abi"
+repository = "https://github.com/HeroicKatora/direct-asm"
+
+readme = "Readme.md"
+keywords = ["linux", "syscall", "directasm"]
+license = "Unlicense"
 edition = "2018"
 
 [dependencies]
-direct-asm = { path = "../" }
+direct-asm = { path = "../", version = "0.0.1-alpha" }
