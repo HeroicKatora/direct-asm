@@ -1,3 +1,7 @@
+# syscall-linux-raw
+
+Defines syscallN methods for performing raw Linux syscalls.
+
 ## What
 
 Defines the small set of methods abstracting raw syscalls with different

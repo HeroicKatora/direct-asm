@@ -38,7 +38,7 @@ dynasm = ["dynasm-lib"]
 [workspace]
 members = [
   ".",
-  "linux-syscall-abi",
+  "syscall-linux-raw",
 ]
 
 [profile.dev]

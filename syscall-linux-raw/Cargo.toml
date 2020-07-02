@@ -1,10 +1,10 @@
 [package]
-name = "linux-syscall-abi"
+name = "syscall-linux-raw"
 version = "0.0.1"
 authors = ["Andreas Molzer <andreas.molzer@gmx.de>"]
 
-description = "Defines syscallN methods for making raw Linux"
-documentation = "https://docs.rs/linux-syscall-abi"
+description = "Defines syscallN methods for performing raw Linux syscalls"
+documentation = "https://docs.rs/syscall-linux-raw"
 repository = "https://github.com/HeroicKatora/direct-asm"
 
 readme = "Readme.md"
