@@ -1,6 +1,6 @@
 [package]
 name = "syscall-linux-raw"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Andreas Molzer <andreas.molzer@gmx.de>"]
 
 description = "Defines syscallN methods for performing raw Linux syscalls"
