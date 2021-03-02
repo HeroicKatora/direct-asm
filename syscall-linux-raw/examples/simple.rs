@@ -4,14 +4,14 @@
 
 fn exit() -> ! {
     unsafe {
-        linux_syscall_abi::syscall1(linux_syscall_abi::SysNr(60), 0);
+        syscall_linux_raw::syscall1(syscall_linux_raw::SysNr(60), 0);
         core::hint::unreachable_unchecked();
     }
 }
 
 fn write(fd: usize, buf: &[u8]) {
     unsafe {
-        linux_syscall_abi::syscall3(linux_syscall_abi::SysNr(1), fd as isize, buf.as_ptr() as isize, buf.len() as isize);
+        syscall_linux_raw::syscall3(syscall_linux_raw::SysNr(1), fd as isize, buf.as_ptr() as isize, buf.len() as isize);
     }
 }
 
