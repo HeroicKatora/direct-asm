@@ -63,37 +63,37 @@ mod impl_;
 #[repr(transparent)]
 pub struct SysNr(pub isize);
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "none"))]
 pub unsafe fn syscall0(nr: SysNr) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call0(nr) }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "none"))]
 pub unsafe fn syscall1(nr: SysNr, a: isize) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call1(a, nr) }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "none"))]
 pub unsafe fn syscall2(nr: SysNr, a: isize, b: isize) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call2(a, b, nr) }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "none"))]
 pub unsafe fn syscall3(nr: SysNr, a: isize, b: isize, c: isize) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call3(a, b, c, nr) }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "none"))]
 pub unsafe fn syscall4(nr: SysNr, a: isize, b: isize, c: isize, d: isize) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call4(a, b, c, d, nr) }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "none"))]
 pub unsafe fn syscall5(nr: SysNr, a: isize, b: isize, c: isize, d: isize, e: isize) -> isize {
     // Translate to the inner abi
     unsafe { impl_::call5(a, b, c, d, e, nr) }

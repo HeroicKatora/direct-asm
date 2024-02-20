@@ -38,9 +38,13 @@ pub fn assemble(args: TokenStream, input: TokenStream) -> TokenStream {
     let unique_ident = syn::Ident::new(&unique_name, proc_macro2::Span::call_site());
     let mut binary_symbol = quote! {
         mod #unique_ident {
+            #[repr(C)]
+            #[repr(align(16))]
+            struct T([u8; #len]);
+
             #[link_section=".text"]
             #[no_mangle]
-            static #unique_ident: [u8; #len] = #definition;
+            static #unique_ident: T = T(#definition);
         }
     };
 

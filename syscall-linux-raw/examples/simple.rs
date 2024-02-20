@@ -16,8 +16,9 @@ fn write(fd: usize, buf: &[u8]) {
 }
 
 #[no_mangle]
-pub extern fn main() {
+pub fn _start() -> ! {
     write(1, "Hello, world!\n".as_bytes());
+    exit();
 }
 
 use core::panic::PanicInfo;
@@ -26,7 +27,3 @@ use core::panic::PanicInfo;
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
-
-#[no_mangle] fn __libc_csu_fini() {}
-#[no_mangle] fn __libc_csu_init() {}
-#[no_mangle] fn __libc_start_main() -> ! { main(); exit() }
