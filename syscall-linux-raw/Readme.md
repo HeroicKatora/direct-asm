@@ -24,7 +24,8 @@ Indeed. Don't use in prod.
 See the example: `cargo run --example simple`.
 
 Only works on `x86_64-unknown-linux-*` and should fail to compile on other
-architectures and OS's.
+architectures and OS's. It also works on `x86_64-unknown-none` but all methods
+are unsafe and the contract of calling a Linux OS must be upheld by the caller.
 
 ## License
 

@@ -52,6 +52,9 @@ Indeed. Don't use in prod.
 
 Within the `minimal-rust` folder we build a 186-byte binary on stable Rust.
 
+Also, the `syscall-linux-raw` folder demonstrates a 936-byte "Hello, world!"
+binary on decently ergonomic stable Rust. And we even properly call `exit(0)`.
+
 ## License
 
 The base software: [Unlicense](https://unlicense.org/)
